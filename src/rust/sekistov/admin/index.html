@@ -1,0 +1,325 @@
+<!doctype html>
+<html>
+<head>
+<title>Admin</title>
+<style>
+body { 
+    margin: 0; 
+    padding: 0; 
+    position: absolute; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-size: 16px;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+}
+#video {
+    display: block;
+    /* width: calc(100vw - 300px); */
+}
+/* #canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh } */
+/* #file-input { z-index: 1; position: absolute } */
+/* #img-wrapper { position: absolute; width: 1px; height: 1px; overflow: auto } */
+/* #img { visibility: hidden} */
+/* #input-panel {  */
+/*     --width: 400px; */
+/*     --height: 150px; */
+/*     position: absolute;  */
+/*     left: calc(100vw - var(--width) - 40px); */
+/*     top: calc(100vh - var(--height) - 40px); */
+/*     background: white;  */
+/*     padding: 1rem;  */
+/*     height: var(--height); */
+/*     width: var(--width); */
+/*     border: 1px solid silver; */
+/*     border-radius: 4px; */
+/*     display: flex; */
+/*     flex-direction: column; */
+/*     /* justify-content: space-between; */ */
+/* } */
+/* label::after { */
+/*     content: ': '; */
+/* } */
+/* input[type="radio"] + label::after { */
+/*     content: ''; */
+/* } */
+/* #menu { */
+/*     margin-bottom: 0.5rem; */
+/* } */
+/* fieldset#title div:first-of-type { */
+/*     margin-bottom: 0.5rem; */
+/* } */
+/* fieldset { */
+/*     --height: 80px; */
+/* } */
+/* fieldset#background { */
+/*     --height: 90px; */
+/* } */
+/* fieldset#title { */
+/*     --height: 50px; */
+/* } */
+/* fieldset#ear { */
+/*     --height: 40px; */
+/* } */
+/* fieldset > div { */
+/*     height: var(--height); */
+/*     display: flex; */
+/*     flex-direction: column; */
+/*     justify-content: space-between; */
+/* } */
+/* input[type="color"] { height: 24px; } */
+/* .colorpick-eyedropper-input-trigger { display: none; } */
+/* input, label { */
+/*     cursor: pointer; */
+/* } */
+</style>
+<script type="module">
+const console_info = compound => console.log(strFromCompound(lib, compound))
+const console_warn = compound => console.warn(strFromCompound(lib, compound))
+const console_err = compound => console.error(strFromCompound(lib, compound))
+const console_err_allocate = (size, compound) => size > 0 ? 
+    console.error(`failed to allocate ${size} bytes in ${strFromCompound(lib, compound)}`) 
+    : 
+    console.error(`failed to allocate memmory in ${strFromCompound(lib, compound)}`)
+let lib
+// -------------
+Promise.all([
+    new Promise((resolve) => addEventListener("DOMContentLoaded", resolve)),
+    WebAssembly.instantiateStreaming( fetch("/zig/lib.wasm"), { 
+        env: {
+            console_info,
+            console_warn,
+            console_err,
+            console_err_allocate
+        }
+    })
+]).then(main)
+
+function main([_, r]) {
+    lib = r.instance.exports
+    document.getElementById('upload-video-file-input').addEventListener('change', selectUploadVideoFile, false)
+}
+
+function selectUploadVideoFile(e) {
+    for (const file of e.target.files) {
+        console.log(file)
+        var reader = new FileReader()
+        reader.readAsArrayBuffer(file)
+        const start_load = performance.now()
+        reader.onload = function(e) {
+            console.log('loaded ' + file.name, Math.round((performance.now() - start_load) * 1000))
+            var contents = e.target.result
+            const len = contents.byteLength 
+            const timestamp = Math.round(file.lastModified / 1000)
+            const textEncoder = new TextEncoder()
+            const file_name_encoded = textEncoder.encode(file.name)
+            console.log({file_name_encoded})
+            const file_name_len = file_name_encoded.length
+            // const arr = new Uint8Array(contents)
+            const allocated_len = len + 4 + 1 + file_name_len;
+            const ofs = lib.allocUint8(allocated_len);
+            console.warn({allocated_len});
+            (new Uint8Array(lib.memory.buffer, ofs, len)).set(new Uint8Array(contents));
+            // console.log(lib)
+            const compound = lib.getFileId(ofs, len)
+            // console.log({compound})
+            const file_id = strFromCompound(lib, compound)
+// compound)
+            // console_warn(file_id)
+
+            fetch('/check/' + file_id).then(
+                response => {
+                    console.log(response)
+                    if (200 == response.status) {
+                        response.json().then(resp => { 
+                            if (resp === null) {
+                                (new Uint8Array(lib.memory.buffer, ofs + len + 4 + 1, file_name_encoded.length)).set(file_name_encoded);
+                                lib.prepareBufToSend(ofs + len, timestamp)
+                                const body = new Uint8Array(lib.memory.buffer, ofs, allocated_len)
+                                // console.warn({allocated_len, byteLength: body.byteLength})
+                                fetch('/upload', { 
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/octet-stream', // https://stackoverflow.com/questions/6783921/which-mime-type-to-use-for-a-binary-file-thats-specific-to-my-program
+                                    },
+                                    body,
+                                }).then(
+                                    response => {
+                                        console.log(response)
+                                        // if (200 == response.status) {
+                                        //     response.text().then(url => { 
+                                        //         console.log({url})
+                                        //         document.getElementById('video').setAttribute('src', '/' + url)
+                                        //     })
+                                        // }
+                                    },
+                                    err => {
+                                        console.error(err)
+                                    },
+                                ) 
+                            } else {
+                                console.log({resp})
+                            }
+                            // document.getElementById('video').setAttribute('src', '/' + url)
+                        })
+                    }
+                },
+                err => {
+                    console.error(err)
+                },
+            ) 
+            // console.log(e)
+        }
+    }
+    // var file = e.target.files[0]
+    // if (file) { 
+    //     var reader = new FileReader();
+    //     reader.readAsArrayBuffer(file);
+    //     reader.onload = function(e) {
+    //         var contents = e.target.result
+    //         const len = contents.byteLength 
+    //         console.log({len, contents})
+    //         // contents.resize(contents.byteLength + 16)
+    //         console.log(contents.byteLength)
+    //         // https://stackoverflow.com/questions/36067767/how-do-i-upload-a-file-with-the-js-fetch-api
+    //         fetch('/upload', { 
+    //             method: 'POST',
+    //             headers: {
+    //                 'Content-Type': 'application/octet-stream', // https://stackoverflow.com/questions/6783921/which-mime-type-to-use-for-a-binary-file-thats-specific-to-my-program
+    //             },
+    //             body: contents,
+    //         }).then(
+    //             response => {
+    //                 console.log(response)
+    //                 if (200 == response.status) {
+    //                     response.text().then(url => { 
+    //                         console.log({url})
+    //                         document.getElementById('video').setAttribute('src', '/' + url)
+    //                     })
+    //                 }
+    //             },
+    //             err => {
+    //                 console.error(err)
+    //             },
+    //         ) 
+    //         // const arr = new Uint8Array(contents)
+    //         // const ofs = lib.allocUint8(len);
+    //         // (new Uint8Array(lib.memory.buffer, ofs, len)).set(new Uint8Array(contents));
+    //         // const compound = lib.encodeBase64(ofs, len);
+    //         // lib.freeUint8(ofs, len);
+    //         // const img = document.getElementById('img')
+    //         // img.src = 'data:image;base64, ' +  strFromCompound(lib, compound);
+    //         // const start_load = performance.now();
+    //         // img.onload = () => {
+    //         //     console.log('loaded', Math.round((performance.now() - start_load) * 1000))
+    //         //     // https://developer.mozilla.org/en-US/docs/Web/API/Window/createImageBitmap
+    //         //     // console.log(img.width, img.height)
+    //         //     createImageBitmap(img).then(bitmap => { 
+    //         //         // console.log({bitmap})
+    //         //         const w = img.width
+    //         //         const h = img.height
+    //         //         const ctx = (new OffscreenCanvas(w, h)).getContext("2d")
+    //         //         ctx.drawImage(bitmap, 0, 0)
+    //         //         model.imgDataBackgroundSource = ctx.getImageData(0, 0, w, h)
+    //         //         setBackgroundAlpha()
+    //         //     })
+    //         // }
+    //     }
+    // }
+}
+
+// https://github.com/KeeVeeG/promise-all-dynamic/blob/main/src/index.ts
+// const PromiseAllSettledDynamic = (promises) => new Promise(resolve => {
+//     const wait = () => {
+//         const length = promises.length
+//         Promise.allSettled(promises).then(data => {
+//             if (length == promises.length) {
+//                 resolve(data)
+//             } else {
+//                 wait()
+//             }
+//         })
+//     }
+//     wait()
+// })
+
+function strFromCompound(lib, compound) {
+    const {len, ofs} = fromCompound(compound);
+    const str_buf = new Uint8Array(lib.memory.buffer, ofs, len);
+    const str = new TextDecoder("utf8").decode(str_buf);
+    lib.freeCompound(compound)
+    return str
+}
+function fromCompound(compound) {
+    const ofs = Number(BigInt(compound) & BigInt(0xFFFFFFFF));
+    const len = Number(BigInt(compound) >> BigInt(34));
+    return { ofs, len }
+}
+</script>
+</head>
+<body>
+    <!-- <label for="background-image-input">Image</label> -->
+    <input type="file" id="upload-video-file-input" multiple/>
+
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video -->
+    <!-- <video id="video" controls width="1080"> </video> -->
+<!-- <canvas id="canvas"></canvas> -->
+<!-- <div id="img-wrapper"><img id="img"/></div> -->
+<!-- <div id="input-panel"> -->
+<!--     <div id="menu"> -->
+<!--         &#60;&#33;&#45;&#45; <label for="title-image-input">title-image</label> &#45;&#45;&#62; -->
+<!--         <input type="radio" id="menu-background" name="menu" value="background"/> -->
+<!--         <label for="menu-background">background</label> -->
+<!--  -->
+<!--         <input type="radio" id="menu-title" name="menu" value="title"/> -->
+<!--         <label for="menu-title">title</label> -->
+<!--  -->
+<!--         <input type="radio" id="menu-ear" name="menu" value="ear"/> -->
+<!--         <label for="menu-ear">ear</label> -->
+<!--     </div> -->
+<!--     <fieldset id="background"> -->
+<!--         <legend>Background:</legend> -->
+<!--         <div> -->
+<!--             <div> -->
+<!--                 <label for="background-color-picker">Color</label> -->
+<!--                 <input type="color" id="background-color-picker"/> -->
+<!--             </div> -->
+<!--             <div> -->
+<!--                 <label for="background-image-input">Image</label> -->
+<!--                 <input type="file" id="background-image-input"/> -->
+<!--             </div> -->
+<!--             <div> -->
+<!--                 <label for="background-alpha-input">Alpha</label> -->
+<!--                 <input type="range" id="background-alpha-input"/> -->
+<!--                 <input type="checkbox" id="calc-wasm-profit"/> -->
+<!--                 <span id="wasm-profit"><span> -->
+<!--             </div> -->
+<!--         </div> -->
+<!--     </fieldset> -->
+<!--     <fieldset id="title"> -->
+<!--         <legend>Title:</legend> -->
+<!--         <div> -->
+<!--             <div> -->
+<!--                 <input type="radio" id="title-image" name="title" value="image"/> -->
+<!--                 <label for="title-image">image</label> -->
+<!--  -->
+<!--                 <input type="radio" id="title-text" name="title" value="text"/> -->
+<!--                 <label for="title-text">text</label> -->
+<!--             </div> -->
+<!--             <div id="title-image-choice"> -->
+<!--                 <input type="file" id="title-image-input"/> -->
+<!--             </div> -->
+<!--             <div id="title-text-choice"></div> -->
+<!--         </div> -->
+<!--     </fieldset> -->
+<!--     <fieldset id="ear"> -->
+<!--         <legend>Ear:</legend> -->
+<!--         <div> -->
+<!--             <input type="file" id="ear-image-input"/> -->
+<!--         </div> -->
+<!--     </fieldset> -->
+<!-- </div> -->
+<!-- </body> -->
+<!-- <script> -->
+<!-- </script> -->
+<!-- <script type="module" src="index.js"></script> -->
+</html>
