@@ -14,7 +14,6 @@ pub const allocUint8 = log.allocUint8;
 
 export fn prepareBufToSend(ofs: u32, timestamp: u32) void {
     const ptr: [*]u8 = @ptrFromInt(ofs);
-    // std.mem.writeIntNative(u32, ptr[0..@sizeOf(u32)], timestamp);
     std.mem.writeInt(u32, ptr[0..@sizeOf(u32)], timestamp, .Little);
     ptr[@sizeOf(u32)] = 0;
 }

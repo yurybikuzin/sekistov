@@ -28,3 +28,5 @@ maud = "0.26"
 serde_yml = "0.0.12"
 axum = { version = "0.8" }
 tower-http = { version = "0.6", features = ["fs", "trace"] }
+blake2 = "0.10"
+base64 = "0.22"

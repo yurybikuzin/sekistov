@@ -2,7 +2,8 @@
 edition = "2021"
 authors = ["Yury Bikuzin <yurybikuzin@yandex.ru>"]
 name = "sekistov"
-version = "0.1.0"
+version = "0.2.0"
+# 0.2.0 - blake2s128 on client and server
 # 0.1.0 - initial
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -36,3 +37,5 @@ serde_yml = { workspace = true }
 axum = { workspace = true, features = ["tracing", "macros", "multipart", "ws", "json" ] }
 tower-http = { workspace = true, features = ["fs", "trace"] }
 maud = { workspace = true, features = ["axum"] }
+blake2 = { workspace = true }
+base64 = { workspace = true }
