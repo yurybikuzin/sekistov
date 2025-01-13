@@ -1,87 +1,55 @@
 use super::*;
 
-// #[derive(Deserialize)]
-// pub struct SubscribeParams {
-//     /// Настройка для SSE
-//     keep_alive_secs: Option<u64>,
-//
-//     /// Настройка для SSE
-//     keep_alive_text: Option<String>,
-//
-//     /// Создавать ли топик при подписке на еще несуществующий топик?
-//     anyway: Option<bool>,
-// }
-//
-// use axum::response::sse::Sse;
-// use std::time::Duration;
-// https://github.com/tokio-rs/axum/blob/main/examples/sse/src/main.rs
+#[derive(Serialize, Default)]
+struct Meta {
+    file_name: Option<String>,
+    timestamp: Option<u32>,
+    file_size: u64,
+}
 pub async fn check(
     state: Extension<SharedState>,
-    // params: Query<SubscribeParams>,
     Path(file_id): Path<String>,
 ) -> impl IntoResponse {
     info!("file_id: {file_id}");
-    let mut file_path = std::path::PathBuf::from("video");
-    file_path.push(file_id);
-    file_path.push("orig");
-    if file_path.exists() {
-        info!("file_path{file_path:?} exists");
-        todo!();
-        // Json(None::<String>)
+    let mut orig_file_path = {
+        let mut ret = std::path::PathBuf::from("video");
+        ret.push(file_id);
+        ret.push("orig");
+        ret
+    };
+    if let Ok(metadata) = orig_file_path.metadata() {
+        let mut ret = Meta::default();
+        ret.file_size = metadata.len();
+        let meta_file_path = {
+            let mut ret = orig_file_path;
+            ret.set_file_name("meta.yaml");
+            ret
+        };
+
+        if let Some((file_name, timestamp)) = tokio::fs::read_to_string(meta_file_path)
+            .await
+            .ok()
+            .and_then(|s| {
+                #[derive(Deserialize)]
+                struct Meta {
+                    file_name: String,
+                    timestamp: u32,
+                }
+                serde_yml::from_str::<Meta>(&s)
+                    .map(
+                        |Meta {
+                             file_name,
+                             timestamp,
+                         }| (file_name, timestamp),
+                    )
+                    .ok()
+            })
+        {
+            ret.file_name = Some(file_name);
+            ret.timestamp = Some(timestamp);
+        }
+        Json(Some(ret))
     } else {
-        warn!("file_path{file_path:?} NOT exists");
-        Json(None::<String>)
+        Json(None)
     }
-    // let SubscribeParams {
-    //     keep_alive_secs,
-    //     keep_alive_text,
-    //     anyway,
-    // } = params.0;
-    //
-    // let event_stream = {
-    //     let topics = &mut state.write().await.topics;
-    //     if let Some(topic) = topics.get(&name) {
-    //         let event_stream = EventStream::new(topic);
-    //         topic
-    //             .write()
-    //             .unwrap()
-    //             .add_subscriber(event_stream.subscriber());
-    //
-    //         Some(event_stream)
-    //     } else if anyway.unwrap_or(false) {
-    //         let topic = Arc::new(std::sync::RwLock::new(Topic::default()));
-    //         let event_stream = EventStream::new(&topic);
-    //         topic
-    //             .write()
-    //             .unwrap()
-    //             .add_subscriber(event_stream.subscriber());
-    //
-    //         topics.insert(name.clone(), topic);
-    //         Some(event_stream)
-    //     } else {
-    //         None
-    //     }
-    // };
-    //
-    // if let Some(event_stream) = event_stream {
-    //     debug!(
-    //         "did subscribe'{}' to topic'{name}'",
-    //         event_stream
-    //             .subscriber()
-    //             .upgrade()
-    //             .map(|subscriber| subscriber.id())
-    //             .unwrap()
-    //     );
-    //     Sse::new(event_stream)
-    //         .keep_alive(
-    //             axum::response::sse::KeepAlive::new()
-    //                 .interval(Duration::from_secs(
-    //                     keep_alive_secs.unwrap_or_else(|| settings!(keep_alive_secs)),
-    //                 ))
-    //                 .text(keep_alive_text.unwrap_or_default()),
-    //         )
-    //         .into_response()
-    // } else {
-    //     format!("failed to subscribe to non existent topic'{name}'").into_response()
-    // }
 }

@@ -1,55 +1,94 @@
 use super::*;
 
 pub async fn upload(_state: Extension<SharedState>, data: Bytes) -> impl IntoResponse {
-    info!("len: {}", data.len());
-    let mut i = data.len();
-    loop {
-        i -= 1;
-        if data[i] == 0 {
-            break;
-        }
+    #[derive(Serialize)]
+    struct Meta<'a> {
+        file_name: &'a str,
+        timestamp: u32,
     }
-    info!("i: {i}, data.len: {}", data.len());
-    info!("{}", std::str::from_utf8(&data[i + 1..data.len()]).unwrap());
-    let timestamp = u32::from_le_bytes(data[i - 4..i].try_into().unwrap());
-    info!("timestamp: {timestamp}");
+    let (file_id, meta) = {
+        let mut i = data.len();
+        loop {
+            i -= 1;
+            if data[i] == 0 {
+                break;
+            }
+        }
+        let file_name = std::str::from_utf8(&data[i + 1..data.len()]).unwrap();
+        let timestamp = u32::from_le_bytes(data[i - 4..i].try_into().unwrap());
 
-    use blake2::{digest::consts::U16, Blake2s, Digest};
-    // use hex_literal::hex;
+        let file_id = {
+            use blake2::{digest::consts::U16, Blake2s, Digest};
 
-    type Blake2s128 = Blake2s<U16>;
+            type Blake2s128 = Blake2s<U16>;
 
-    let mut hasher = Blake2s128::new();
-    hasher.update(&data[0..i - 4]);
-    let res = hasher.finalize();
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-    let s = URL_SAFE_NO_PAD.encode(res);
-    info!("file_id: {s}");
-    // info!(res);
-    // assert_eq!(res[..], hex!("2cc55c84e416924e6400")[..]);
+            let mut hasher = Blake2s128::new();
+            hasher.update(&data[0..i - 4]);
+            let res = hasher.finalize();
+            use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+            URL_SAFE_NO_PAD.encode(res)
+        };
+        (
+            file_id,
+            Meta {
+                file_name,
+                timestamp,
+            },
+        )
+    };
 
-    // info!(
-    //     "{}",
-    //     std::str::from_utf8(&data[data.len() - 14..data.len()]).unwrap()
-    // );
-    // info!(
-    //     "{}",
-    //     std::str::from_utf8(&data[data.len() - 14..data.len()]).unwrap()
-    // );
+    use tokio::io::AsyncWriteExt;
 
-    use std::fs;
-    use std::io::Write; // bring trait into scope
+    let file_path = {
+        let mut ret = std::path::PathBuf::from("video");
+        ret.push(file_id);
+        ret
+    };
+    let from_file_path = {
+        let file_path = {
+            let mut ret = file_path.clone();
+            ret.push("orig~");
+            ret
+        };
+        if let Some(parent) = file_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|err| anyhow!("create_dir_all({parent:?}): {err}"))
+                .unwrap();
+        }
+        file_path
+    };
 
-    // ... later in code
-    // let file_path = "video/some";
-    // let mut file = fs::OpenOptions::new()
-    //     .create(true) // To create a new file
-    //     .write(true)
-    //     // either use the ? operator or unwrap since it returns a Result
-    //     .open(file_path)
-    //     .unwrap();
-    //
-    // let _ = file.write_all(&data);
-    // file_path
+    will_did!(info => format!("write({from_file_path:?})"),
+        tokio::fs::write(&from_file_path, &data)
+            .await
+            .map_err(|err| anyhow!("write({from_file_path:?}): {err}")).unwrap()
+    );
+
+    let to_file_path = {
+        let mut ret = file_path;
+        ret.push("orig");
+        ret
+    };
+
+    let meta_file_path = {
+        let mut ret = to_file_path.clone();
+        ret.set_file_name("meta.yaml");
+        ret
+    };
+
+    will_did!(info => format!("write({meta_file_path:?})"),
+        tokio::fs::write(&meta_file_path, serde_yml::to_string(&meta).unwrap().as_bytes())
+            .await
+            .map_err(|err| anyhow!("write({from_file_path:?}): {err}")).unwrap()
+    );
+
+    will_did!(info => format!("rename({from_file_path:?}, {to_file_path:?})"),
+        tokio::fs::rename(&from_file_path, &to_file_path)
+            .await
+            .map_err(|err| anyhow!("rename({from_file_path:?}, {to_file_path:?})"))
+            .unwrap()
+    );
+
     "OK"
 }
