@@ -1,0 +1,44 @@
+@import './base.css';
+
+#app {
+  /* max-width: 1280px; */
+  /* max-width: 480px; */
+  /* min-height: 75vh; */
+  /* margin: 1rem auto; */
+  font-weight: normal;
+  /* border-radius: 1.5rem; */
+  background-color: var(--color-background-soft);
+  /* display: flex; */
+  /* flex-direction: column; */
+  /* justify-content: space-between; */
+}
+
+a,
+/* .green  */
+{
+  text-decoration: none;
+  /* color: hsla(160, 100%, 37%, 1); */
+  color: navy;
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    /* background-color: hsla(160, 100%, 37%, 0.2); */
+    background-color: rgb(230, 246, 255);
+  }
+}
+
+/* @media (min-width: 1024px) { */
+/*   body { */
+/*     display: flex; */
+/*     place-items: center; */
+/*   } */
+/*  */
+/*   #app { */
+/*     display: grid; */
+/*     grid-template-columns: 1fr 1fr; */
+/*     padding: 0 2rem; */
+/*   } */
+/* } */
