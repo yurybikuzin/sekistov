@@ -7,16 +7,16 @@ const std = @import("std");
 
 pub const allocator = std.heap.wasm_allocator;
 
-pub fn info(str:[]u8) void {
-    const ptr_to_compound = PtrToCompound {
+pub fn info(str: []u8) void {
+    const ptr_to_compound = PtrToCompound{
         .ptr = str.ptr,
         .len = str.len,
     };
     console_info(ptr_to_compound.make());
 }
 
-pub fn info_const(str:[]const u8) void {
-    const ptr_to_compound = PtrToCompound {
+pub fn info_const(str: []const u8) void {
+    const ptr_to_compound = PtrToCompound{
         .ptr = @constCast(str.ptr),
         .len = str.len,
         .is_const = true,
@@ -24,16 +24,16 @@ pub fn info_const(str:[]const u8) void {
     console_info(ptr_to_compound.make());
 }
 
-pub fn warn(str:[]u8) void {
-    const ptr_to_compound = PtrToCompound {
+pub fn warn(str: []u8) void {
+    const ptr_to_compound = PtrToCompound{
         .ptr = str.ptr,
         .len = str.len,
     };
     console_warn(ptr_to_compound.make());
 }
 
-pub fn warn_const(str:[]const u8) void {
-    const ptr_to_compound = PtrToCompound {
+pub fn warn_const(str: []const u8) void {
+    const ptr_to_compound = PtrToCompound{
         .ptr = @constCast(str.ptr),
         .len = str.len,
         .is_const = true,
@@ -41,16 +41,16 @@ pub fn warn_const(str:[]const u8) void {
     console_warn(ptr_to_compound.make());
 }
 
-pub fn err(str:[]u8) void {
-    const ptr_to_compound = PtrToCompound {
+pub fn err(str: []u8) void {
+    const ptr_to_compound = PtrToCompound{
         .ptr = str.ptr,
         .len = str.len,
     };
     console_err(ptr_to_compound.make());
 }
 
-pub fn err_const(str:[]const u8) void {
-    const ptr_to_compound = PtrToCompound {
+pub fn err_const(str: []const u8) void {
+    const ptr_to_compound = PtrToCompound{
         .ptr = @constCast(str.ptr),
         .len = str.len,
         .is_const = true,
@@ -58,15 +58,14 @@ pub fn err_const(str:[]const u8) void {
     console_err(ptr_to_compound.make());
 }
 
-pub fn err_allocate(size: u32, str:[]const u8) void {
-    const ptr_to_compound = PtrToCompound {
+pub fn err_allocate(size: u32, str: []const u8) void {
+    const ptr_to_compound = PtrToCompound{
         .ptr = @constCast(str.ptr),
         .len = str.len,
         .is_const = true,
     };
     console_err_allocate(size, ptr_to_compound.make());
 }
-
 
 pub const PtrToCompound = struct {
     ptr: [*]u8,
@@ -81,12 +80,7 @@ pub const PtrToCompound = struct {
         };
     }
     fn decode(compound: u64) PtrToCompound {
-        return .{
-            .ptr = @ptrFromInt(@as(u32, @intCast(compound & 0xFFFFFFFF))),
-            .len = @as(u32, @intCast(compound >> 34)),
-            .is_const = compound & (1 << 33) != 0,
-            .is_str = compound & (1 << 32) != 0
-        };
+        return .{ .ptr = @ptrFromInt(@as(u32, @intCast(compound & 0xFFFFFFFF))), .len = @as(u32, @intCast(compound >> 34)), .is_const = compound & (1 << 33) != 0, .is_str = compound & (1 << 32) != 0 };
     }
     pub fn make(self: PtrToCompound) u64 {
         var ret: u64 = @intCast(self.len);

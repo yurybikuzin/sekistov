@@ -1,15 +1,21 @@
 use super::*;
 
-#[derive(Serialize, Default)]
-struct Meta {
-    file_name: Option<String>,
-    timestamp: Option<u32>,
-    file_size: u64,
+#[derive(Serialize, Default, ToSchema)]
+#[schema(example = "OK")]
+pub struct Meta {
+    pub file_name: Option<String>,
+    pub timestamp: Option<u32>,
+    pub file_size: u64,
 }
-pub async fn check(
-    state: Extension<SharedState>,
-    Path(file_id): Path<String>,
-) -> impl IntoResponse {
+#[utoipa::path(
+    get,
+    path = "/check/{file_id}",
+    tag = TODO_TAG,
+    responses(
+        (status = 200, description = "Get file description", body = Option<Meta>)
+    )
+)]
+pub async fn handler(state: Extension<SharedState>, Path(file_id): Path<String>) -> Response {
     info!("file_id: {file_id}");
     let mut orig_file_path = {
         let mut ret = std::path::PathBuf::from("video");
@@ -48,8 +54,8 @@ pub async fn check(
             ret.file_name = Some(file_name);
             ret.timestamp = Some(timestamp);
         }
-        Json(Some(ret))
+        Json(Some(ret)).into_response()
     } else {
-        Json(None)
+        Json(None::<Meta>).into_response()
     }
 }

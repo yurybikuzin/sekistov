@@ -1,6 +1,16 @@
 use super::*;
 
-pub async fn upload(_state: Extension<SharedState>, data: Bytes) -> impl IntoResponse {
+#[utoipa::path(
+    post,
+    path = "/upload",
+    tag = TODO_TAG,
+    request_body(content_type = "application/octet-stream"),
+    responses(
+        (status = 200, description = "Did upload successfully", body = UploadResponse)
+    )
+)]
+#[axum::debug_handler]
+pub async fn handler(_state: Extension<SharedState>, data: Bytes) -> impl IntoResponse {
     #[derive(Serialize)]
     struct Meta<'a> {
         file_name: &'a str,
@@ -90,5 +100,31 @@ pub async fn upload(_state: Extension<SharedState>, data: Bytes) -> impl IntoRes
             .unwrap()
     );
 
-    "OK"
+    UploadResponse("OK").0.into_response()
 }
+
+// #[derive(ToSchema)]
+// struct UploadResponse(#[schema(examples = ("OK"))] &'static str);
+
+#[derive(ToSchema)]
+#[schema(value_type = String)]
+#[schema(example = "OK")]
+struct UploadResponse(&'static str);
+
+// use utoipa::{
+//     openapi::{KnownFormat, ObjectBuilder, RefOr, Schema, SchemaFormat, Type},
+//     PartialSchema,
+// };
+//
+// impl PartialSchema for UploadResponse {
+//     fn schema() -> RefOr<Schema> {
+//         // ... impl schema generation here
+//         RefOr::T(Schema::Object(
+//             ObjectBuilder::new()
+//                 .schema_type(Type::String)
+//                 .examples(["OK"])
+//                 // .format(Some(SchemaFormat::KnownFormat(KnownFormat::String)))
+//                 .build(),
+//         ))
+//     }
+// }

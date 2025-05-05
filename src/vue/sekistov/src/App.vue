@@ -13,7 +13,8 @@ let lib
 // -------------
 Promise.all([
     new Promise((resolve) => addEventListener("DOMContentLoaded", resolve)),
-    WebAssembly.instantiateStreaming( fetch("../../../rust/sekistov/zig/lib.wasm"), { 
+    // WebAssembly.instantiateStreaming( fetch("../../../rust/sekistov/zig/lib.wasm"), { 
+    WebAssembly.instantiateStreaming( fetch("/api/lib.wasm"), { 
         env: {
             console_info,
             console_warn,
@@ -56,7 +57,7 @@ function selectUploadVideoFile(e) {
 // compound)
             // console_warn(file_id)
 
-            fetch('/check/' + file_id).then(
+            fetch('/api/check/' + file_id).then(
                 response => {
                     console.log(response)
                     if (200 == response.status) {
@@ -66,7 +67,7 @@ function selectUploadVideoFile(e) {
                                 lib.prepareBufToSend(ofs + len, timestamp)
                                 const body = new Uint8Array(lib.memory.buffer, ofs, allocated_len)
                                 // console.warn({allocated_len, byteLength: body.byteLength})
-                                fetch('/upload', { 
+                                fetch('/api/upload', { 
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/octet-stream', // https://stackoverflow.com/questions/6783921/which-mime-type-to-use-for-a-binary-file-thats-specific-to-my-program

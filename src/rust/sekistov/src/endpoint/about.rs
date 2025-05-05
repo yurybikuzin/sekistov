@@ -1,12 +1,11 @@
 use super::*;
 
-pub async fn about(state: Extension<SharedState>) -> impl IntoResponse {
+pub async fn handler(state: Extension<SharedState>) -> Response {
     let AppState {
         op_mode,
         pkg_name,
         pkg_version,
         ..
     } = &*state.read().await;
-    info!("about");
-    format!("{op_mode} {pkg_name} {pkg_version}\n")
+    format!("{op_mode} {pkg_name} {pkg_version}\n").into_response()
 }

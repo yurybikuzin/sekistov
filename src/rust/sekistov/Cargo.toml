@@ -2,7 +2,8 @@
 edition = "2021"
 authors = ["Yury Bikuzin <yurybikuzin@yandex.ru>"]
 name = "sekistov"
-version = "0.3.0"
+version = "0.4.0"
+# 0.4.0 - lib.wasm is built in to rust application
 # 0.3.0 - route'upload' and route'check' are implemented
 # 0.2.0 - blake2s128 on client and server
 # 0.1.0 - initial
@@ -40,3 +41,10 @@ tower-http = { workspace = true, features = ["fs", "trace"] }
 maud = { workspace = true, features = ["axum"] }
 blake2 = { workspace = true }
 base64 = { workspace = true }
+
+utoipa = { workspace = true, features = ["axum_extras", "openapi_extensions", "preserve_order", "preserve_path_order", "indexmap", "rc_schema"] }
+utoipa-swagger-ui = { workspace = true, features = ["axum"] }
+utoipa-axum = { workspace = true }
+utoipa-redoc = { workspace = true, features = ["axum"] }
+utoipa-rapidoc = { workspace = true, features = ["axum"] }
+utoipa-scalar = { workspace = true, features = ["axum"] }
