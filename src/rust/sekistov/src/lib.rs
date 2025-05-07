@@ -5,43 +5,24 @@ use tracing::{debug, error, info, span, trace, warn, Level};
 
 use axum::{
     response::{IntoResponse, Response},
-    routing::{get, post},
-    Extension, Router,
+    routing::get,
+    Extension,
 };
 use common_macros::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::Weak;
-use tower_http::{services::ServeDir, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 
-use maud::{html, Markup, DOCTYPE};
 use tokio::sync::RwLock;
 
-// mod about;
-// pub use about::*;
-
 mod endpoint;
-// mod page;
-
-// mod subscriber;
-// use subscriber::*;
-//
-// mod message;
-// use message::*;
-//
-// mod topic;
-// use topic::*;
 
 declare_settings! {
     // keep_alive_secs: u64,
 }
 
-use utoipa::{
-    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
-    IntoParams, Modify, OpenApi, ToSchema,
-};
+use utoipa::{OpenApi, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
 use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
@@ -79,10 +60,6 @@ pub async fn server(
     let app = router
         .route("/about", get(endpoint::about::handler))
         .layer(Extension(shared_state.clone()))
-        // .nest_service("/admin", ServeDir::new("admin"))
-        // .nest_service("/asset", ServeDir::new("asset"))
-        // .nest_service("/video", ServeDir::new("video"))
-        // .nest_service("/zig", ServeDir::new("zig"))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api.clone()))
         .merge(Redoc::with_url("/redoc", api.clone()))
         // There is no need to create `RapiDoc::with_openapi` because the OpenApi is served

@@ -15,9 +15,9 @@ pub struct Meta {
         (status = 200, description = "Get file description", body = Option<Meta>)
     )
 )]
-pub async fn handler(state: Extension<SharedState>, Path(file_id): Path<String>) -> Response {
+pub async fn handler(_state: Extension<SharedState>, Path(file_id): Path<String>) -> Response {
     info!("file_id: {file_id}");
-    let mut orig_file_path = {
+    let orig_file_path = {
         let mut ret = std::path::PathBuf::from("video");
         ret.push(file_id);
         ret.push("orig");
@@ -26,6 +26,7 @@ pub async fn handler(state: Extension<SharedState>, Path(file_id): Path<String>)
     if let Ok(metadata) = orig_file_path.metadata() {
         let mut ret = Meta::default();
         ret.file_size = metadata.len();
+
         let meta_file_path = {
             let mut ret = orig_file_path;
             ret.set_file_name("meta.yaml");

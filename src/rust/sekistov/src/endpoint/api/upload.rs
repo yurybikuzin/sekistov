@@ -47,8 +47,6 @@ pub async fn handler(_state: Extension<SharedState>, data: Bytes) -> impl IntoRe
         )
     };
 
-    use tokio::io::AsyncWriteExt;
-
     let file_path = {
         let mut ret = std::path::PathBuf::from("video");
         ret.push(file_id);
@@ -96,35 +94,14 @@ pub async fn handler(_state: Extension<SharedState>, data: Bytes) -> impl IntoRe
     will_did!(info => format!("rename({from_file_path:?}, {to_file_path:?})"),
         tokio::fs::rename(&from_file_path, &to_file_path)
             .await
-            .map_err(|err| anyhow!("rename({from_file_path:?}, {to_file_path:?})"))
+            .map_err(|_err| anyhow!("rename({from_file_path:?}, {to_file_path:?})"))
             .unwrap()
     );
 
     UploadResponse("OK").0.into_response()
 }
 
-// #[derive(ToSchema)]
-// struct UploadResponse(#[schema(examples = ("OK"))] &'static str);
-
 #[derive(ToSchema)]
 #[schema(value_type = String)]
 #[schema(example = "OK")]
 struct UploadResponse(&'static str);
-
-// use utoipa::{
-//     openapi::{KnownFormat, ObjectBuilder, RefOr, Schema, SchemaFormat, Type},
-//     PartialSchema,
-// };
-//
-// impl PartialSchema for UploadResponse {
-//     fn schema() -> RefOr<Schema> {
-//         // ... impl schema generation here
-//         RefOr::T(Schema::Object(
-//             ObjectBuilder::new()
-//                 .schema_type(Type::String)
-//                 .examples(["OK"])
-//                 // .format(Some(SchemaFormat::KnownFormat(KnownFormat::String)))
-//                 .build(),
-//         ))
-//     }
-// }

@@ -2,7 +2,8 @@
 edition = "2021"
 authors = ["Yury Bikuzin <yurybikuzin@yandex.ru>"]
 name = "sekistov"
-version = "0.4.0"
+version = "0.4.1"
+# 0.4.1 - fix cargo check
 # 0.4.0 - lib.wasm is built in to rust application
 # 0.3.0 - route'upload' and route'check' are implemented
 # 0.2.0 - blake2s128 on client and server
